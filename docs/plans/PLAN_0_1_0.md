@@ -20,8 +20,8 @@
 | `vendor/vv-memory/docs/plans/PLAN_0.1.0.md` | sibling | Bronze + Silver substrate. `Vv::Memory::Scoped#record_episode` is the integration point for decision-flow episodes. Hard dependency: `vv-memory >= 0.1.0`. |
 | `vendor/vv-memory/docs/plans/PLAN_0.2.0.md` | sibling | `Vv::Memory::Conformer::Extractor` interface — the integration point for `Vv::Decision::DecisionExtractor`. Hard dependency: `vv-memory >= 0.2.0`. |
 | `vendor/vv-memory/docs/plans/PLAN_0.4.0.md` | sibling | `Vv::Memory.recall(scope:, query:)` retrieval facade. Sketch only at v0.1.0 of *this* gem; v0.1.0 ships with a thinner Silver-only recall (see Phase C). |
-| `vendor/rails-semantica/docs/plans/PLAN_0.13.0.md` | sibling (transitive) | `Semantica::Scope` value object for cross-graph operations. Used by the read-side aggregate methods. |
-| `vendor/rails-semantica/CONSUMER_REQUIREMENT_VV.md` | sibling | Boundary item B4 records the layering-correction ask back to rails-semantica's PLAN_0.14.0 — this gem is the new home for the decision lifecycle. |
+| `vendor/vv-graph/docs/plans/PLAN_0.13.0.md` | sibling (transitive) | `Vv::Graph::Scope` value object for cross-graph operations. Used by the read-side aggregate methods. |
+| `vendor/vv-graph/CONSUMER_REQUIREMENT_VV.md` | sibling | Boundary item B4 records the layering-correction ask back to vv-graph's PLAN_0.14.0 — this gem is the new home for the decision lifecycle. |
 | [`semantica-agi/semantica`](https://github.com/semantica-agi/semantica) | upstream | The Python project whose decision-intelligence DSL motivated PLAN_0.14.0. Vocabulary inspiration; we deliberately do NOT adopt its decision-as-data framing. |
 
 ## Current state baseline (2026-05-25)
@@ -159,8 +159,8 @@ vv-decision/
   - `spec.add_dependency "rails", ">= 8.1"`.
   - `spec.add_dependency "vv-memory", ">= 0.2.0"` (the Conformer
     Extractor interface is the integration point).
-  - `spec.add_dependency "rails-semantica", ">= 0.13.0"` (for
-    `Semantica::Scope` + the SPARQL-star read surface used by
+  - `spec.add_dependency "vv-graph", ">= 0.13.0"` (for
+    `Vv::Graph::Scope` + the SPARQL-star read surface used by
     the read-side aggregate methods). Transitively pulled by
     `vv-memory` but declared explicitly so a tightening of this
     gem's surface is visible at gemspec-resolution time.
@@ -322,7 +322,7 @@ end
 
 - `Vv::Decision::DeliberationContext`:
   - `#recall(query:, depth: :silver)` — **v0.1.0 thin recall.**
-    Wraps `Semantica::Sparql.select(sparql_for(query),
+    Wraps `Vv::Graph::Sparql.select(sparql_for(query),
     graph: scope.memory_silver[:iri])` and returns a
     `Vv::Decision::EvidenceSlice` wrapping the result rows. The
     `query:` parameter is a plain SPARQL string in v0.1.0 — the
@@ -368,7 +368,7 @@ end
 - Spec: a block that raises rolls back **all** state — no Decision row, no Bronze episodes.
 - Spec: a block that exits without calling `decide!` persists a Decision row with `decided_at: nil`; `decision.decided? == false`.
 - Spec: calling `decide!` twice inside one block raises `Vv::Decision::Errors::AlreadyDecided`.
-- Spec: `ctx.recall(query: sparql_string)` returns an `EvidenceSlice` whose row count matches `Semantica::Sparql.select(sparql_string, graph: silver_iri)[:results].size`; records a `decision_query` episode.
+- Spec: `ctx.recall(query: sparql_string)` returns an `EvidenceSlice` whose row count matches `Vv::Graph::Sparql.select(sparql_string, graph: silver_iri)[:results].size`; records a `decision_query` episode.
 - Spec: `ctx.recall(query: ..., depth: :gold)` raises `Errors::RecallDepthUnsupported` in v0.1.0.
 - Spec: `ctx.consider(option: :a, grounded_in: slice)` appends to `decision.alternatives` and records a `decision_consider` episode.
 - Spec: `ctx.reason_with(model: :x, prompt: "y", completion: "z")` sets `decision.reasoning_payload == { "model" => "x", "prompt" => "y", "completion" => "z" }` and records a `decision_reasoning` episode.
@@ -577,11 +577,11 @@ Open question 3 are **deferred to v0.2.0**.
   7. Assert the `vvdec:Decision` headline + content triples land in `session.memory_silver[:iri]`.
   8. Assert the parent Conformer's `vvmem:` annotations land on the quoted-triple subject.
   9. Assert all four read-side methods (`trace_back`, `alternatives_considered`, `impact`, `evidence_slice`) return the expected shapes.
-  10. `session.memory_silver[:checkpoint!].call`; `Semantica::EtherealGraph.evict!(silver_iri)`; `session.memory_silver[:hydrate!].call`; re-assert all `vvdec:` triples survived (proves the Silver story round-trips through Active Storage).
+  10. `session.memory_silver[:checkpoint!].call`; `Vv::Graph::EtherealGraph.evict!(silver_iri)`; `session.memory_silver[:hydrate!].call`; re-assert all `vvdec:` triples survived (proves the Silver story round-trips through Active Storage).
 
 - `bin/check` — single operator-runnable script:
   1. `bundle install` (idempotent).
-  2. Verify the `sqlite-sparql` artifact via `vendor/rails-semantica/bin/check`'s engine-detection logic, or emit an explicit error pointing at rails-semantica's PLAN_0.1.0.
+  2. Verify the `sqlite-sparql` artifact via `vendor/vv-graph/bin/check`'s engine-detection logic, or emit an explicit error pointing at vv-graph's PLAN_0.1.0.
   3. Verify `vv-memory ≥ 0.2.0` is in the bundle (the
      `Vv::Memory::Conformer::Extractor` constant check).
   4. `bundle exec rspec`.
@@ -595,7 +595,7 @@ Open question 3 are **deferred to v0.2.0**.
   - `VERSION` → `0.1.0`.
 
 #### Exit criteria
-- `bin/check` exits 0 against the canonical dev environment (rails-semantica ≥ 0.13.0 with built engine, vv-memory ≥ 0.2.0).
+- `bin/check` exits 0 against the canonical dev environment (vv-graph ≥ 0.13.0 with built engine, vv-memory ≥ 0.2.0).
 - The integration spec passes — load-bearing test for the v0.1.0 contract.
 - `CHANGELOG.md` `0.1.0` heading drops `(unreleased)`.
 
@@ -608,7 +608,7 @@ Open question 3 are **deferred to v0.2.0**.
 - **`Vv::Memory.recall(...)` facade integration.** v0.1.0 ships the thin Silver-only recall (`ctx.recall(query: sparql_string)`); `depth: :gold` / `:bronze` raise `Errors::RecallDepthUnsupported`. Once `vv-memory` PLAN_0.4.0 ships, this gem's `ctx.recall` delegates and the refusal lifts.
 - **LLM invocation inside `deliberate(...)`.** `ctx.reason_with(model:, prompt:, completion:)` records a trace; the operator supplies the completion. v0.1.0 does not invoke any model. The gem is layering-neutral on the model choice — `model:` is a freeform string. v0.2.0+ may add a `model_adapter:` hook.
 - **Multi-scope decision queries.** "Find every Decision for this User across all their Sessions." Possible today by union-querying named graphs; not packaged as a facade method in 0.1.0.
-- **Decision-pattern shaping** (SHACL-style validation of well-formed decisions). Could live in Silver via a `Semantica::Shacl` shape declaration; the gem does not ship one in v0.1.0.
+- **Decision-pattern shaping** (SHACL-style validation of well-formed decisions). Could live in Silver via a `Vv::Graph::Shacl` shape declaration; the gem does not ship one in v0.1.0.
 - **Publishing to rubygems.org.** Path-sourced under `vendor/vv-decision/` for the entire v0.x.x line.
 
 ## v0.1.0 contract additions (frozen at release)
@@ -630,7 +630,7 @@ Open question 3 are **deferred to v0.2.0**.
 
 No structured-envelope `{ ok:, reason:, because: }` surface in
 v0.1.0 — the gem composes Active Record exceptions for persistence,
-`Semantica::Sparql` envelopes for SPARQL, and Ruby exceptions for
+`Vv::Graph::Sparql` envelopes for SPARQL, and Ruby exceptions for
 its own contract violations. The unified envelope surface waits
 until the analytical facades land in v0.2.0+.
 
@@ -664,7 +664,7 @@ until the analytical facades land in v0.2.0+.
 - `../../../vv-memory/docs/plans/PLAN_0.1.0.md` — Bronze + Silver substrate.
 - `../../../vv-memory/docs/plans/PLAN_0.2.0.md` — Conformer + Extractor interface (this gem's primary integration point).
 - `../../../vv-memory/docs/plans/PLAN_0.4.0.md` — `Vv::Memory.recall(...)` facade (the v0.1.0 thin recall stands in for this until it ships).
-- `../../../rails-semantica/docs/plans/PLAN_0.13.0.md` — `Semantica::Scope` value object.
-- `../../../rails-semantica/CONSUMER_REQUIREMENT_VV.md` — boundary item B4 (the layering-correction ask back to PLAN_0.14.0).
+- `../../../vv-graph/docs/plans/PLAN_0.13.0.md` — `Vv::Graph::Scope` value object.
+- `../../../vv-graph/CONSUMER_REQUIREMENT_VV.md` — boundary item B4 (the layering-correction ask back to PLAN_0.14.0).
 - `../../README.md` — this gem's README (Quickstart + three-layer sidebar).
 - [`semantica-agi/semantica`](https://github.com/semantica-agi/semantica) — upstream Python project whose decision-intelligence DSL motivated PLAN_0.14.0 and whose decision-as-data framing this gem pushes back against.

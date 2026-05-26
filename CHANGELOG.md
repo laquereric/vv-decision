@@ -14,8 +14,8 @@ satisfies.
 
 - **Phase A — gem skeleton + Engine.** `vv-decision.gemspec` pins
   `vv-memory >= 0.2.0` (the Conformer Extractor interface is the
-  primary integration point) + `rails-semantica >= 0.13` (the
-  `Semantica::Scope` read-side surface) + `activerecord /
+  primary integration point) + `vv-graph >= 0.13` (the
+  `Vv::Graph::Scope` read-side surface) + `activerecord /
   railties >= 8.0`. `lib/vv/decision.rb` is the top-level entry.
   `Vv::Decision::Engine` isolates the namespace and registers an
   `after_initialize` guard that raises
