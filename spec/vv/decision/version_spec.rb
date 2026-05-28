@@ -4,7 +4,7 @@ require "spec_helper"
 
 RSpec.describe Vv::Decision::VERSION do
   it "matches the VERSION file" do
-    expected = File.read(File.expand_path("../../../../VERSION", __dir__)).strip
+    expected = File.read(File.expand_path("../../../VERSION", __dir__)).strip
     expect(Vv::Decision::VERSION).to eq(expected)
   end
 

@@ -82,11 +82,36 @@ module Vv
                 end
               end
             end
+
+            # PLAN_0_1_0 Phase B — the Decision aggregate table.
+            # Mirror of db/migrate/20260525000001.
+            unless conn.table_exists?(:vv_decision_decisions)
+              ::ActiveRecord::Schema.define do
+                create_table :vv_decision_decisions do |t|
+                  t.references :scope, polymorphic: true, null: false, index: true
+                  t.string   :context,        null: false
+                  t.string   :decided_option, null: true
+                  t.text     :because
+                  t.json     :alternatives,      null: false, default: []
+                  t.json     :reasoning_payload, null: false, default: {}
+                  t.bigint   :decision_context_episode_id
+                  t.bigint   :decision_outcome_episode_id
+                  t.datetime :decided_at, null: true
+                  t.string   :provenance_id
+                  t.timestamps
+                end
+                add_index :vv_decision_decisions, :decided_at
+                add_index :vv_decision_decisions, [:scope_type, :scope_id, :decided_at]
+                add_index :vv_decision_decisions, :provenance_id,
+                          unique: true, where: "provenance_id IS NOT NULL"
+              end
+            end
           end
 
           def reset!
             conn = ::ActiveRecord::Base.connection
             %i[
+              vv_decision_decisions
               vv_memory_episodes
               vv_memory_conformer_cursors
               vv_memory_conformer_quality

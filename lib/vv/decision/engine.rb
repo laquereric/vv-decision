@@ -43,6 +43,12 @@ module Vv
                 "Vv::Memory::Conformer::Extractor (vv-memory >= 0.2.0). " \
                 "bundle vv-memory 0.2.0+ alongside vv-decision."
         end
+
+        # PLAN_0_1_0 Phase D — register the DecisionExtractor against
+        # vv-memory's Conformer registry (shipped in vv-memory
+        # v0.2.2). Idempotent; routes `decision_outcome` Bronze
+        # episodes through DecisionExtractor on `scope.conform_now!`.
+        ::Vv::Decision.register_extractor!
       end
     end
   end

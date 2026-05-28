@@ -20,16 +20,16 @@ RSpec.describe Vv::Decision::Engine do
     expect(defined?(::Vv::Memory::Conformer::Extractor)).to eq("constant")
   end
 
-  it "registers the MissingDependency guard for application boot" do
-    # The guard runs inside config.after_initialize, which only fires
-    # under a full Rails::Application boot — we don't boot one here.
-    # Pin the guard's presence by checking the initializer list
-    # carries the after_initialize block this Engine declared.
-    initializer_count = described_class.initializers.size
-    expect(initializer_count).to be > 0
-    # If the guard is removed, this expectation isn't sufficient on
-    # its own; the load-time chain in spec_helper exercises the
-    # happy path, and Phase F's integration spec exercises the boot
-    # path inside a host app.
+  it "register_extractor! (invoked at boot) idempotently binds the DecisionExtractor" do
+    # The Engine's config.after_initialize calls
+    # `Vv::Decision.register_extractor!` under a full app boot — which
+    # we don't run here. Exercise that registration directly: it's
+    # idempotent (vv-memory's StrategySelector treats same-class
+    # re-registration as a no-op) and binds the "decision_outcome"
+    # kind to DecisionExtractor.
+    Vv::Decision.register_extractor!
+    expect { Vv::Decision.register_extractor! }.not_to raise_error
+    expect(::Vv::Memory::Conformer::StrategySelector.registered_for("decision_outcome"))
+      .to eq(::Vv::Decision::DecisionExtractor)
   end
 end

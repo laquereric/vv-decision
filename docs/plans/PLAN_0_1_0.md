@@ -24,12 +24,41 @@
 | `vendor/vv-graph/CONSUMER_REQUIREMENT_VV.md` | sibling | Boundary item B4 records the layering-correction ask back to vv-graph's PLAN_0.14.0 — this gem is the new home for the decision lifecycle. |
 | [`semantica-agi/semantica`](https://github.com/semantica-agi/semantica) | upstream | The Python project whose decision-intelligence DSL motivated PLAN_0.14.0. Vocabulary inspiration; we deliberately do NOT adopt its decision-as-data framing. |
 
-## Current state baseline (2026-05-25)
+## Current state baseline
 
-`vendor/vv-decision/` contains only `README.md` (placeholder
-pointing at `docs/research/DecisionLayer.md` plus the
-three-layer sidebar). No gem skeleton, no Gemfile, no specs, no
-Engine, no `VERSION`. v0.1.0 is a greenfield build.
+**2026-05-28 — v0.1.0 fully implemented (Phases A–F landed).**
+Suite: 42 examples, 0 failures against the live `sqlite-sparql`
+engine. The `deliberate → conform → recall →
+checkpoint/evict/hydrate` round-trip passes end-to-end.
+
+- Phase A ✅ skeleton + Engine + 5 error classes.
+- Phase B ✅ `Decision` AR model + migration `20260525000001`.
+- Phase C ✅ `deliberate` + `DeliberationContext` + `EvidenceSlice`
+  + `EPISODE_KINDS`.
+- Phase D ✅ `DecisionExtractor` + boot-time registration.
+- Phase E ✅ five read-side traversal methods.
+- Phase F ✅ integration spec + `bin/check` + CHANGELOG.
+
+**API reconciliation (Phase D).** This plan's §Phase D sketched
+registration via `Vv::Memory::Conformer::ExtractorRegistry` with
+an `.unregister(extractor_class)` opt-out. vv-memory actually
+shipped (v0.2.2, CR_DS B1 option A) a different surface:
+`Vv::Memory::Conformer::StrategySelector.register(kind:,
+extractor_class:)` keyed by episode kind, with **no per-class
+unregister**. The implementation uses the shipped surface;
+`Vv::Decision.register_extractor!` wraps the
+`StrategySelector.register(kind: "decision_outcome", ...)` call
+and runs in the Engine's `after_initialize`. Operators who want
+to suppress decision triples thread a custom `StrategySelector`
+(CR_DS B1 option B) rather than calling an unregister API.
+
+---
+
+*Original baseline (2026-05-25):* `vendor/vv-decision/` contained
+only `README.md` (placeholder pointing at
+`docs/research/DecisionLayer.md` plus the three-layer sidebar). No
+gem skeleton, no Gemfile, no specs, no Engine, no `VERSION`.
+v0.1.0 was a greenfield build.
 
 The substrate (`server/`) currently records decision-like events
 as ad-hoc Bronze episodes via `Vv::Memory::Scoped#record_episode`
@@ -486,11 +515,25 @@ module Vv
 end
 ```
 
-Registration: `Vv::Decision::Engine` (Phase A) registers the
-extractor with `Vv::Memory::Conformer::ExtractorRegistry` at
-boot. Operators who do not want decision triples in their Silver
-can call `Vv::Memory::Conformer::ExtractorRegistry.unregister(Vv::Decision::DecisionExtractor)`
-before the first `conform_now!`.
+Registration (**as shipped — supersedes the sketch above**):
+`Vv::Decision::Engine`'s `after_initialize` calls
+`Vv::Decision.register_extractor!`, which invokes
+`Vv::Memory::Conformer::StrategySelector.register(kind:
+"decision_outcome", extractor_class:
+Vv::Decision::DecisionExtractor)` — the registry surface vv-memory
+shipped in v0.2.2 (CR_DS B1 option A). Registration is idempotent
+(same-class re-registration is a no-op), so `register_extractor!`
+is also safe to call directly from a non-Rails spec harness.
+
+vv-memory's registry keys by episode **kind**, not by extractor
+class, and ships **no** `unregister`. Operators who do not want
+decision triples in their Silver thread a custom
+`StrategySelector` subclass that doesn't route `decision_outcome`
+and pass it through `conform!(strategy:)` (CR_DS B1 option B) —
+rather than unregistering. The `extract` method shown above also
+guards (`return [] unless decision&.decided?`), so a stray
+`decision_outcome` episode without a decided `Decision` row emits
+nothing.
 
 #### Exit criteria
 - Spec: a `deliberate(...) { |ctx| ctx.decide!(...) }` round-trip followed by `scope.conform_now!` emits the headline `rdf:type vvdec:Decision` triple into `scope.memory_silver[:iri]`.
